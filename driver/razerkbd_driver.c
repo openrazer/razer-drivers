@@ -449,8 +449,8 @@ static ssize_t razer_attr_read_device_type(struct device *dev, struct device_att
         device_type = "Razer Blade Pro (Late 2019)\n";
         break;
 
-    case USB_DEVICE_ID_RAZER_BLADE_PRO_EARLY_2019:
-        device_type = "Razer Blade Pro (Early 2019)\n";
+    case USB_DEVICE_ID_RAZER_BLADE_PRO_EARLY_2020:
+        device_type = "Razer Blade Pro (Early 2020)\n";
         break;
 
     case USB_DEVICE_ID_RAZER_BLADE_STEALTH_LATE_2017:
@@ -2785,7 +2785,6 @@ static void razer_kbd_disconnect(struct hid_device *hdev)
         case USB_DEVICE_ID_RAZER_BLADE_MID_2019_MERCURY:
         case USB_DEVICE_ID_RAZER_BLADE_PRO_2019:
         case USB_DEVICE_ID_RAZER_BLADE_PRO_LATE_2019:
-        case USB_DEVICE_ID_RAZER_BLADE_PRO_EARLY_2020:
         case USB_DEVICE_ID_RAZER_BLADE_15_ADV_2020:
             device_remove_file(&hdev->dev, &dev_attr_matrix_effect_wave);            // Wave effect
             device_remove_file(&hdev->dev, &dev_attr_matrix_effect_starlight);       // Starlight effect
