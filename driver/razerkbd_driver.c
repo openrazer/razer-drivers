@@ -2446,6 +2446,7 @@ static int razer_kbd_probe(struct hid_device *hdev, const struct hid_device_id *
         case USB_DEVICE_ID_RAZER_BLADE_STEALTH_LATE_2016:
         case USB_DEVICE_ID_RAZER_BLADE_STEALTH_MID_2017:
         case USB_DEVICE_ID_RAZER_BLADE_STEALTH_LATE_2017:
+        case USB_DEVICE_ID_RAZER_BLADE_PRO_EARLY_2020:
             CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_matrix_effect_wave);            // Wave effect
             CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_matrix_effect_starlight);       // Starlight effect
             CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_matrix_effect_spectrum);        // Spectrum effect
@@ -2466,7 +2467,6 @@ static int razer_kbd_probe(struct hid_device *hdev, const struct hid_device_id *
         case USB_DEVICE_ID_RAZER_BLADE_MID_2019_MERCURY:
         case USB_DEVICE_ID_RAZER_BLADE_PRO_2019:
         case USB_DEVICE_ID_RAZER_BLADE_PRO_LATE_2019:
-        case USB_DEVICE_ID_RAZER_BLADE_PRO_EARLY_2020:
         case USB_DEVICE_ID_RAZER_BLADE_15_ADV_2020:
             CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_matrix_effect_wave);            // Wave effect
             CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_matrix_effect_starlight);       // Starlight effect
