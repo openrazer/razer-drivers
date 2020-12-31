@@ -551,7 +551,7 @@ struct razer_report razer_chroma_extended_matrix_effect_wave(unsigned char varia
     direction = clamp_u8(direction, 0x00, 0x02);
 
     report.arguments[3] = direction;
-    report.arguments[4] = 0x28; // Unknown
+    report.arguments[4] = 0x28; // Speed, lower values are faster
     return report;
 }
 
@@ -1068,8 +1068,8 @@ struct razer_report razer_chroma_misc_set_dpi_xy(unsigned char variable_storage,
     struct razer_report report = get_razer_report(0x04, 0x05, 0x07);
 
     // Keep the DPI within bounds
-    dpi_x = clamp_u16(dpi_x, 128, 16000);
-    dpi_y = clamp_u16(dpi_y, 128, 16000);
+    dpi_x = clamp_u16(dpi_x, 100, 20000);
+    dpi_y = clamp_u16(dpi_y, 100, 20000);
 
     report.arguments[0] = VARSTORE;
 

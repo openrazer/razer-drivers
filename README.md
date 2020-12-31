@@ -120,6 +120,8 @@ The devices below are fully feature supported by OpenRazer, which means all avai
 | Razer Viper                                   |  1532:0078  |
 | Razer Viper Ultimate (Wired)                  |  1532:007A  |
 | Razer Viper Ultimate (Wireless)               |  1532:007B  |
+| Razer DeathAdder V2 Pro (Wired)               |  1532:007C  |
+| Razer DeathAdder V2 Pro (Wireless)            |  1532:007D  |
 | Razer Basilisk X HyperSpeed                   |  1532:0083  |
 | Razer DeathAdder V2                           |  1532:0084  |
 | Razer Viper Mini                              |  1532:008A  |
@@ -157,6 +159,8 @@ The devices below are fully feature supported by OpenRazer, which means all avai
 | Razer Chroma Mug Holder                       |  1532:0F07  |
 | Razer Base Station Chroma                     |  1532:0F08  |
 | Razer Chroma Hardware Development Kit (HDK)   |  1532:0F09  |
+| Razer Mouse Bungee V3 Chroma                  |  1532:0F1D  |
+
 
 #### Determining the Device ID
 Razer devices use a USB VID (Vendor ID) of `1532`. You can identify the USB PID (Product ID) by typing:
