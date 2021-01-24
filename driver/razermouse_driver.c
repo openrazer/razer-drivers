@@ -286,6 +286,10 @@ static ssize_t razer_attr_read_device_type(struct device *dev, struct device_att
         device_type = "Razer Naga 2012\n";
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_EPIC:
+        device_type = "Razer Naga Epic\n";
+        break;
+
     case USB_DEVICE_ID_RAZER_NAGA_2014:
         device_type = "Razer Naga 2014\n";
         break;
@@ -1177,6 +1181,7 @@ static ssize_t razer_attr_write_mouse_dpi(struct device *dev, struct device_attr
         break;
 
     // Damn naga hex only uses 1 byte per x, y dpi
+    case USB_DEVICE_ID_RAZER_NAGA_EPIC:
     case USB_DEVICE_ID_RAZER_NAGA_HEX_RED:
     case USB_DEVICE_ID_RAZER_NAGA_HEX:
     case USB_DEVICE_ID_RAZER_NAGA_2012:
@@ -1313,6 +1318,7 @@ static ssize_t razer_attr_read_mouse_dpi(struct device *dev, struct device_attri
         return sprintf(buf, "%u:%u\n", device->orochi2011_dpi, device->orochi2011_dpi);
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_EPIC:
     case USB_DEVICE_ID_RAZER_NAGA_HEX_RED:
     case USB_DEVICE_ID_RAZER_NAGA_HEX:
     case USB_DEVICE_ID_RAZER_NAGA_2012:
@@ -1363,6 +1369,7 @@ static ssize_t razer_attr_read_mouse_dpi(struct device *dev, struct device_attri
         device->usb_pid == USB_DEVICE_ID_RAZER_NAGA_HEX_RED ||
         device->usb_pid == USB_DEVICE_ID_RAZER_NAGA_2012 ||
         device->usb_pid == USB_DEVICE_ID_RAZER_DEATHADDER_2013 ||
+        device->usb_pid == USB_DEVICE_ID_RAZER_NAGA_EPIC ||
         device->usb_pid == USB_DEVICE_ID_RAZER_ABYSSUS_1800) { // NagaHex is crap uses only byte for dpi
         dpi_x = response.arguments[0];
         dpi_y = response.arguments[1];
@@ -3982,6 +3989,18 @@ static int razer_mouse_probe(struct hid_device *hdev, const struct hid_device_id
             CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_charge_low_threshold);
             CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_device_idle_time);
             break;
+
+        case USB_DEVICE_ID_RAZER_NAGA_EPIC:
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_dpi);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_poll_rate);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_charge_low_threshold);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_device_idle_time);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_charge_level);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_charge_status);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_scroll_led_brightness);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_scroll_led_rgb);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_scroll_led_effect);
+            break;
         }
 
     }
@@ -4443,6 +4462,18 @@ static void razer_mouse_disconnect(struct hid_device *hdev)
             device_remove_file(&hdev->dev, &dev_attr_charge_low_threshold);
             device_remove_file(&hdev->dev, &dev_attr_device_idle_time);
             break;
+
+        case USB_DEVICE_ID_RAZER_NAGA_EPIC:
+            device_remove_file(&hdev->dev, &dev_attr_dpi);
+            device_remove_file(&hdev->dev, &dev_attr_poll_rate);
+            device_remove_file(&hdev->dev, &dev_attr_charge_low_threshold);
+            device_remove_file(&hdev->dev, &dev_attr_device_idle_time);
+            device_remove_file(&hdev->dev, &dev_attr_charge_level);
+            device_remove_file(&hdev->dev, &dev_attr_charge_status);
+            device_remove_file(&hdev->dev, &dev_attr_scroll_led_brightness);
+            device_remove_file(&hdev->dev, &dev_attr_scroll_led_rgb);
+            device_remove_file(&hdev->dev, &dev_attr_scroll_led_effect);
+            break;
         }
 
     }
@@ -4511,6 +4542,7 @@ static const struct hid_device_id razer_devices[] = {
     { HID_USB_DEVICE(USB_VENDOR_ID_RAZER,USB_DEVICE_ID_RAZER_DEATHADDER_2000) },
     { HID_USB_DEVICE(USB_VENDOR_ID_RAZER,USB_DEVICE_ID_RAZER_ATHERIS_RECEIVER) },
     { HID_USB_DEVICE(USB_VENDOR_ID_RAZER,USB_DEVICE_ID_RAZER_BASILISK_X_HYPERSPEED) },
+    { HID_USB_DEVICE(USB_VENDOR_ID_RAZER,USB_DEVICE_ID_RAZER_NAGA_EPIC) },
     { 0 }
 };
 
