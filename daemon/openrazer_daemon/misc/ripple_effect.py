@@ -4,11 +4,40 @@ Contains the functions and classes to perform ripple effects
 import datetime
 import logging
 import math
+import random
 import threading
 import time
 
 # pylint: disable=import-error
 from openrazer_daemon.keyboard import KeyboardColour
+
+COLOUR_CHOICES = (
+    (255, 0, 0),    # Red
+    (0, 255, 0),    # Green
+    (0, 0, 255),    # Blue
+    (255, 255, 0),  # Yellow
+    (0, 255, 255),  # Cyan
+    (255, 0, 255),  # Magenta
+)
+
+
+def random_colour_picker(last_choice, iterable):
+    """
+    Chose a random choice but not the last one
+
+    :param last_choice: Last choice
+    :type last_choice: object
+
+    :param iterable: Iterable object
+    :type iterable: iterable
+
+    :return: Choice
+    :rtype: object
+    """
+    result = random.choice(iterable)
+    while result == last_choice:
+        result = random.choice(iterable)
+    return result
 
 
 class RippleEffectThread(threading.Thread):
@@ -26,6 +55,7 @@ class RippleEffectThread(threading.Thread):
 
         self._colour = (0, 255, 0)
         self._refresh_rate = 0.040
+        self._last_colour_choice = None
 
         self._shutdown = False
         self._active = False
@@ -121,11 +151,13 @@ class RippleEffectThread(threading.Thread):
 
                 radiuses = []
 
-                for expire_time, (key_row, key_col), colour in self.key_list:
+                for expire_time, (key_row, key_col) in self.key_list:
                     event_time = expire_time - expire_diff
 
-                    now_diff = now - event_time
+                    colour = random_colour_picker(self._last_colour_choice, COLOUR_CHOICES)
+                    self._last_colour_choice = colour
 
+                    now_diff = now - event_time
                     # Current radius is based off a time metric
                     if self._colour is not None:
                         colour = self._colour
@@ -182,6 +214,7 @@ class RippleManager(object):
 
         self._ripple_thread = RippleEffectThread(self, device_number)
         self._ripple_thread.start()
+        self._logger.debug("Start Ripple Manager")
 
     @property
     def key_list(self):
@@ -219,6 +252,7 @@ class RippleManager(object):
         :param msg: Notification
         :type msg: tuple
         """
+
         if not isinstance(msg, tuple):
             self._logger.warning("Got msg that was not a tuple")
         elif msg[0] == 'effect':
@@ -234,7 +268,6 @@ class RippleManager(object):
             else:
                 # Effect other than ripple so stop
                 self._ripple_thread.disable()
-
                 self._parent.key_manager.temp_key_store_state = False
 
     def close(self):

@@ -1,47 +1,64 @@
 """
-BlackWidow Macro accessors
+Macro recording methods, placed in a separate file because they don't use the binding_manager
 """
+
 from openrazer_daemon.dbus_services import endpoint
+# pylint: disable=protected-access,too-many-arguments
 
 
-@endpoint('razer.device.macro', 'getMacros', out_sig='s')
-def get_macros(self):
+@endpoint('razer.device.macro', 'startMacroRecording', in_sig='ssy')
+def start_macro_recording(self, profile, mapping, key_code):
     """
-    Get macros
+    Starts recording recording key actions to the given key
 
-    :return: JSON of macros
-    :rtype: str
+    :param profile: The profile name
+    :type: str
+
+    :param mapping: The map name
+    :type: str
+
+    :param key_code: The key code
+    :type: int
     """
-    self.logger.debug("DBus call get_macros")
+    self.logger.debug("DBus call start_macro_recording")
 
-    return self.key_manager.dbus_get_macros()
+    self.key_manager.macro_mode = True
+    self.key_manager._macro_profile = profile
+    self.key_manager._macro_map = mapping
+    self.key_manager.macro_key = key_code
 
 
-@endpoint('razer.device.macro', 'deleteMacro', in_sig='s')
-def delete_macro(self, macro_key):
+@endpoint('razer.device.macro', 'stopMacroRecording')
+def stop_macro_recording(self):
     """
-    Delete macro from key
-
-    :param macro_key: Macro key to delete bound macro from
-    :type macro_key: str
+    Stops macro recording
     """
-    self.logger.debug("DBus call delete_macro")
+    self.logger.debug("DBus call stop_macro_recording")
 
-    self.key_manager.dbus_delete_macro(macro_key)
+    self.key_manager.macro_mode = False
 
 
-@endpoint('razer.device.macro', 'addMacro', in_sig='ss')
-def add_macro(self, macro_bind_key, macro_json):
+@endpoint('razer.device.macro', 'getMacroRecordingState', out_sig='b')
+def get_macro_recording_state(self):
     """
-    Add macro to key
+    Returns the state of the macro recorder
 
-    The macro_json should be JSON form of a list of dictionaries
-    :param macro_bind_key: Macro key to delete bound macro from
-    :type macro_bind_key: str
-
-    :param macro_json: JSON list
-    :type macro_json: str
+    :return: The recording state
+    :rtype: bool
     """
-    self.logger.debug("DBus call add_macro")
+    self.logger.debug("DBus call get_macro_recording_state")
 
-    self.key_manager.dbus_add_macro(macro_bind_key, macro_json)
+    return self.key_manager.macro_mode
+
+
+@endpoint('razer.device.macro', 'getMacroKey', out_sig='y')
+def get_macro_key(self):
+    """
+    Returns the key being recorded to or None.
+
+    :return: The macro key
+    :rtype: int
+    """
+    self.logger.debug("DBus call get_macro_key")
+
+    return self.key_manager.macro_key

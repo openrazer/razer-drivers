@@ -40,9 +40,7 @@ class RazerDevice(DBusService):
 
     ZONES = ('backlight', 'logo', 'scroll', 'left', 'right')
 
-    DEVICE_IMAGE = None
-
-    def __init__(self, device_path, device_number, config, persistence, testing=False, additional_interfaces=None, additional_methods=[]):
+    def __init__(self, device_path, device_number, config, config_file, persistence, testing=False, additional_interfaces=None, additional_methods=[]):
 
         self.logger = logging.getLogger('razer.device{0}'.format(device_number))
         self.logger.info("Initialising device.%d %s", device_number, self.__class__.__name__)
@@ -62,11 +60,14 @@ class RazerDevice(DBusService):
 
         self.config = config
         self.persistence = persistence
+        self._config_file = config_file
         self._testing = testing
         self._parent = None
         self._device_path = device_path
         self._device_number = device_number
         self.serial = self.get_serial()
+
+        self.DEVICE_IMAGE = ""
 
         if self.USB_PID == 0x0f07:
             self.storage_name = "ChromaMug"
@@ -100,7 +101,11 @@ class RazerDevice(DBusService):
         self._is_closed = False
 
         # device methods available in all devices
-        self.methods_internal = ['get_firmware', 'get_matrix_dims', 'has_matrix', 'get_device_name']
+        self.methods_internal = ['get_firmware', 'get_matrix_dims', 'has_matrix', 'get_device_name', 'get_profiles', 'get_active_profile', 'set_active_profile',
+                                 'add_profile', 'remove_profile', 'get_maps', 'copy_map', 'remove_map', 'get_active_map', 'set_active_map', 'get_actions',
+                                 'clear_actions', 'get_default_map', 'set_default_map', 'add_map', 'add_action', 'update_action', 'remove_action',
+                                 'get_actions', 'get_profile_leds', 'set_profile_leds', 'get_matrix', 'set_matrix', 'start_macro_recording',
+                                 'stop_macro_recording', 'get_macro_recording_state', 'get_macro_key']
         self.methods_internal.extend(additional_methods)
 
         # Find event files in /dev/input/by-id/ by matching against regex
@@ -971,8 +976,8 @@ class RazerDeviceSpecialBrightnessSuspend(RazerDevice):
     Suspend functions
     """
 
-    def __init__(self, device_path, device_number, config, persistence, testing=False, additional_interfaces=None, additional_methods=[]):
-        super().__init__(device_path, device_number, config, persistence, testing, additional_interfaces, additional_methods)
+    def __init__(self, device_path, device_number, config, config_file, persistence, testing=False, additional_interfaces=None, additional_methods=[]):
+        super().__init__(device_path, device_number, config, config_file, persistence, testing, additional_interfaces, additional_methods)
 
     def _suspend_device(self):
         """
@@ -1007,6 +1012,6 @@ class RazerDeviceBrightnessSuspend(RazerDeviceSpecialBrightnessSuspend):
     Inherits from RazerDeviceSpecialBrightnessSuspend
     """
 
-    def __init__(self, device_path, device_number, config, persistence, testing=False, additional_interfaces=None, additional_methods=[]):
+    def __init__(self, device_path, device_number, config, config_file, persistence, testing=False, additional_interfaces=None, additional_methods=[]):
         additional_methods.extend(['get_brightness', 'set_brightness'])
-        super().__init__(device_path, device_number, config, persistence, testing, additional_interfaces, additional_methods)
+        super().__init__(device_path, device_number, config, config_file, persistence, testing, additional_interfaces, additional_methods)

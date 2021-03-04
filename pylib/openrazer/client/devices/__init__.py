@@ -1,8 +1,8 @@
 import json
 import dbus as _dbus
 from openrazer.client.fx import RazerFX as _RazerFX
+from openrazer.client.binding import Binding as _Binding
 from xml.etree import ElementTree as _ET
-from openrazer.client.macro import RazerMacro as _RazerMacro
 
 
 class RazerDevice(object):
@@ -10,7 +10,6 @@ class RazerDevice(object):
     Raw razer base device
     """
     _FX = _RazerFX
-    _MACRO_CLASS = _RazerMacro
 
     def __init__(self, serial, vid_pid=None, daemon_dbus=None):
         # Load up the DBus
@@ -51,7 +50,6 @@ class RazerDevice(object):
             'serial': True,
             'brightness': self._has_feature('razer.device.lighting.brightness'),
 
-            'macro_logic': self._has_feature('razer.device.macro'),
             'keyboard_layout': self._has_feature('razer.device.misc', 'getKeyboardLayout'),
 
             # Default device is a chroma so lighting capabilities
@@ -138,6 +136,38 @@ class RazerDevice(object):
             'lighting_profile_led_red': self._has_feature('razer.device.lighting.profile_led', 'setRedLED'),
             'lighting_profile_led_green': self._has_feature('razer.device.lighting.profile_led', 'setGreenLED'),
             'lighting_profile_led_blue': self._has_feature('razer.device.lighting.profile_led', 'setBlueLED'),
+
+            'binding_add_profile': self._has_feature('razer.device.binding', 'addProfile'),
+            'binding_remove_profile': self._has_feature('razer.device.binding', 'removeProfile'),
+            'binding_set_active_profile': self._has_feature('razer.device.binding', 'setActiveProfile'),
+            'binding_get_active_profile': self._has_feature('razer.device.binding', 'getActiveProfile'),
+            'binding_get_profiles': self._has_feature('razer.device.binding', 'getProfiles'),
+            'binding_get_default_map': self._has_feature('razer.device.binding', 'getDefaultMap'),
+            'binding_set_default_map': self._has_feature('razer.device.binding', 'setDefaultMap'),
+
+            'binding_get_maps': self._has_feature('razer.device.binding', 'getMaps'),
+            'binding_copy_map': self._has_feature('razer.device.binding', 'copyMap'),
+            'binding_set_active_map': self._has_feature('razer.device.binding', 'setActiveMap'),
+            'binding_get_active_map': self._has_feature('razer.device.binding', 'getActiveMap'),
+            'binding_add_map': self._has_feature('razer.device.binding', 'addMap'),
+            'binding_add_map': self._has_feature('razer.device.binding', 'removeMap'),
+
+            'binding_get_actions': self._has_feature('razer.device.binding', 'getActions'),
+            'binding_add_action': self._has_feature('razer.device.binding', 'addAction'),
+            'binding_remove_action': self._has_feature('razer.device.binding', 'removeAction'),
+            'binding_update_action': self._has_feature('razer.device.binding', 'updateAction'),
+            'binding_clear_actions': self._has_feature('razer.device.binding', 'clearActions'),
+
+            'binding_lighting_get_profile_leds': self._has_feature('razer.device.binding.lighting', 'getProfileLEDs'),
+            'binding_lighting_set_profile_leds': self._has_feature('razer.device.binding.lighting', 'setProfileLEDs'),
+            'binding_lighting_get_matrix': self._has_feature('razer.device.binding.lighting', 'getMatrix'),
+            'binding_lighting_set_matrix': self._has_feature('razer.device.binding.lighting', 'setMatrix'),
+
+            'binding_start_macro_recording': self._has_feature('razer.device.macro', 'startMacroRecording'),
+            'binding_stop_macro_recording': self._has_feature('razer.device.macro', 'stopMacroRecording'),
+            'binding_get_macro_recording_state': self._has_feature('razer.device.macro', 'getMacroRecordingState'),
+            'binding_get_macro_key': self._has_feature('razer.device.macro', 'getMacroKey'),
+
         }
 
         # Nasty hack to convert dbus.Int32 into native
@@ -154,15 +184,11 @@ class RazerDevice(object):
         else:
             self.fx = self._FX(serial, capabilities=self._capabilities, daemon_dbus=daemon_dbus, matrix_dims=self._matrix_dimensions)
 
-        # Setup Macro
-        if self.has('macro_logic'):
-            if self._MACRO_CLASS is not None:
-                self.macro = self._MACRO_CLASS(serial, self.name, daemon_dbus=daemon_dbus, capabilities=self._capabilities)
-            else:
-                self._capabilities['macro_logic'] = False
-                self.macro = None
+        # Setup Binding
+        if _Binding is None:
+            self.binding = None
         else:
-            self.macro = None
+            self.binding = _Binding(serial, capabilities=self._capabilities, daemon_dbus=daemon_dbus)
 
     def _get_available_features(self):
         introspect_interface = _dbus.Interface(self._dbus, 'org.freedesktop.DBus.Introspectable')
@@ -224,7 +250,7 @@ class RazerDevice(object):
         :return: True or False
         :rtype: bool
         """
-        # Could do capability in self._capabilitys but they might be explicitly disabled
+        # Could do capability in self._capabilities but they might be explicitly disabled
         return self._capabilities.get(capability, False)
 
     @property

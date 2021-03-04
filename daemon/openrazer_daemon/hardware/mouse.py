@@ -10,7 +10,7 @@ from openrazer_daemon.dbus_services.dbus_methods.deathadder_chroma import get_lo
     set_scroll_active as _da_set_scroll_active, get_scroll_active as _da_get_scroll_active, get_logo_active as _da_get_logo_active, set_backlight_active as _da_set_backlight_active, \
     get_backlight_active as _da_get_backlight_active
 from openrazer_daemon.dbus_services.dbus_methods.chroma_keyboard import get_brightness as _get_backlight_brightness, set_brightness as _set_backlight_brightness
-from openrazer_daemon.misc.key_event_management import NagaHexV2KeyManager as _NagaHexV2KeyManager
+from openrazer_daemon.misc.key_event_management import KeyboardKeyManager as _KeyboardKeyManager
 from openrazer_daemon.dbus_services.dbus_methods.lanceheadte import get_left_brightness as _get_left_brightness, get_right_brightness as _get_right_brightness, \
     set_left_brightness as _set_left_brightness, set_right_brightness as _set_right_brightness
 
@@ -792,7 +792,7 @@ class RazerNagaHexV2(__RazerDeviceBrightnessSuspend):
                # Scroll wheel
                'set_scroll_static_naga_hex_v2', 'set_scroll_spectrum_naga_hex_v2', 'set_scroll_none_naga_hex_v2', 'set_scroll_reactive_naga_hex_v2', 'set_scroll_breath_random_naga_hex_v2', 'set_scroll_breath_single_naga_hex_v2', 'set_scroll_breath_dual_naga_hex_v2',
                # #Macros
-               'get_macros', 'delete_macro', 'add_macro',
+
                # Can set Logo, Scroll and thumbgrid with custom
                'set_custom_effect', 'set_key_row']
 
@@ -915,7 +915,7 @@ class RazerNagaChroma(__RazerDeviceSpecialBrightnessSuspend):
                # Scroll wheel
                'set_scroll_static_naga_hex_v2', 'set_scroll_spectrum_naga_hex_v2', 'set_scroll_none_naga_hex_v2', 'set_scroll_reactive_naga_hex_v2', 'set_scroll_breath_random_naga_hex_v2', 'set_scroll_breath_single_naga_hex_v2', 'set_scroll_breath_dual_naga_hex_v2',
                # #Macros
-               'get_macros', 'delete_macro', 'add_macro',
+
                # Can set Logo, Scroll and thumbgrid with custom
                'set_custom_effect', 'set_key_row']
 
