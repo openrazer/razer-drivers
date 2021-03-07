@@ -12,6 +12,10 @@ declare -A files_metadata=(
     ["device_type"]="r;%(name)s"
     ["dpi"]="rw;800:800"
     ["dpi_stages"]="rw;0x010320032005dc05dc"
+    ["fan_1_mode"]="rw;0x0000"
+    ["fan_1_speed"]="rw;0x2b"
+    ["fan_2_mode"]="rw;0x0000"
+    ["fan_2_speed"]="rw;0x2b"
     ["firmware_version"]="r;v1.0"
     ["game_led_state"]="rw;0"
     ["is_mug_present"]="r;0"
@@ -90,7 +94,7 @@ byte_dpi_devices=(
 
 
 get_attr_from_create_device_file() {
-    sed -n 's/[[:space:]]\+CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_\([[:lower:]_]\+\));.*/\1/p'
+    sed -n 's/[[:space:]]\+CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_\([[:lower:][:digit:]_]\+\));.*/\1/p'
 }
 
 driver=$1
