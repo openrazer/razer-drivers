@@ -1,0 +1,1 @@
+cmd_/home/patrick/Builds/git-Baiyah7o/openrazer-merge-toV3/driver/Module.symvers := sed 's/ko$$/o/' /home/patrick/Builds/git-Baiyah7o/openrazer-merge-toV3/driver/modules.order | scripts/mod/modpost  -a   -o /home/patrick/Builds/git-Baiyah7o/openrazer-merge-toV3/driver/Module.symvers -e -i Module.symvers  -N -T -

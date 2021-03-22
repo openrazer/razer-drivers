@@ -44,6 +44,7 @@ The devices below are fully feature supported by OpenRazer, which means all avai
 | Razer Huntsman                                |  1532:0227  |
 | Razer BlackWidow Elite                        |  1532:0228  |
 | Razer Cynosa Chroma                           |  1532:022A  |
+| Razer Cynosa Chroma Pro                       |  1532:022C  |
 | Razer Blade Stealth (Mid 2017)                |  1532:022D  |
 | Razer Blade Pro FullHD (2017)                 |  1532:022F  |
 | Razer Blade Stealth (Late 2017)               |  1532:0232  |
@@ -67,8 +68,11 @@ The devices below are fully feature supported by OpenRazer, which means all avai
 | Razer Blade 15 Advanced (2020)                |  1532:0253  |
 | Razer Blade 15 (Early 2020) Base              |  1532:0255  |
 | Razer Blade Pro (Early 2020)                  |  1532:0256  |
+| Razer Huntsman Mini                           |  1532:0257  |
 | Razer Blade Stealth (Late 2020)               |  1532:0259  |
+| Razer Ornata Chroma V2                        |  1532:025D  |
 | Razer Cynosa V2                               |  1532:025E  |
+| Razer Book 13 (2020)                          |  1532:026A  |
 
 ### Mice
 | Device                                        | USB VID:PID |
@@ -124,7 +128,12 @@ The devices below are fully feature supported by OpenRazer, which means all avai
 | Razer DeathAdder V2 Pro (Wireless)            |  1532:007D  |
 | Razer Basilisk X HyperSpeed                   |  1532:0083  |
 | Razer DeathAdder V2                           |  1532:0084  |
+| Razer Basilisk V2                             |  1532:0085  |
+| Razer Basilisk Ultimate (Wired)               |  1532:0086  |
+| Razer Basilisk Ultimate (Reciever)            |  1532:0088  |
 | Razer Viper Mini                              |  1532:008A  |
+| Razer DeathAdder V2 Mini                      |  1532:008C  |
+| Razer Naga Left-Handed Edition                |  1532:008D  |
 
 ### Mousemats
 | Device                                        | USB VID:PID |
@@ -133,6 +142,7 @@ The devices below are fully feature supported by OpenRazer, which means all avai
 | Razer Firefly                                 |  1532:0C00  |
 | Razer Goliathus                               |  1532:0C01  |
 | Razer Goliathus Extended                      |  1532:0C02  |
+| Razer Firefly v2                              |  1532:0C04  |
 
 ### Headsets
 | Device                                        | USB VID:PID |
@@ -147,6 +157,7 @@ The devices below are fully feature supported by OpenRazer, which means all avai
 ### Misc
 | Device                                        | USB VID:PID |
 | --------------------------------------------- | ----------- |
+| Razer Mouse Dock                              |  1532:007E  |
 | Razer Nostromo                                |  1532:0111  |
 | Razer Orbweaver                               |  1532:0113  |
 | Razer Tartarus                                |  1532:0201  |
@@ -160,7 +171,8 @@ The devices below are fully feature supported by OpenRazer, which means all avai
 | Razer Base Station Chroma                     |  1532:0F08  |
 | Razer Chroma Hardware Development Kit (HDK)   |  1532:0F09  |
 | Razer Mouse Bungee V3 Chroma                  |  1532:0F1D  |
-
+| Razer Base Station V2 Chroma                  |  1532:0F20  |
+| Razer Charging Pad Chroma                     |  1532:0F26  |
 
 #### Determining the Device ID
 Razer devices use a USB VID (Vendor ID) of `1532`. You can identify the USB PID (Product ID) by typing:

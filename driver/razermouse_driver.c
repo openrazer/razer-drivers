@@ -24,6 +24,7 @@
 #include <linux/init.h>
 #include <linux/usb/input.h>
 #include <linux/hid.h>
+#include <linux/hrtimer.h>
 #include <linux/random.h>
 
 #include "razermouse_driver.h"
@@ -53,6 +54,8 @@ static int razer_get_report(struct usb_device *usb_dev, struct razer_report *req
     case USB_DEVICE_ID_RAZER_MAMBA_WIRELESS_RECEIVER:
     case USB_DEVICE_ID_RAZER_MAMBA_WIRELESS_WIRED:
     case USB_DEVICE_ID_RAZER_BASILISK_X_HYPERSPEED:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
         return razer_get_usb_response(usb_dev, 0x00, request_report, 0x00, response_report, RAZER_NEW_MOUSE_RECEIVER_WAIT_MIN_US, RAZER_NEW_MOUSE_RECEIVER_WAIT_MAX_US);
         break;
 
@@ -394,6 +397,18 @@ static ssize_t razer_attr_read_device_type(struct device *dev, struct device_att
         device_type = "Razer Basilisk\n";
         break;
 
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+        device_type = "Razer Basilisk Ultimate (Wired)\n";
+        break;
+
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+        device_type = "Razer Basilisk Ultimate (Receiver)\n";
+        break;
+
+    case USB_DEVICE_ID_RAZER_BASILISK_V2:
+        device_type = "Razer Basilisk V2\n";
+        break;
+
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
         device_type = "Razer DeathAdder V2\n";
         break;
@@ -406,6 +421,10 @@ static ssize_t razer_attr_read_device_type(struct device *dev, struct device_att
         device_type = "Razer DeathAdder V2 Pro (Wireless)\n";
         break;
 
+    case USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI:
+        device_type = "Razer DeathAdder V2 Mini\n";
+        break;
+
     case USB_DEVICE_ID_RAZER_DEATHADDER_2000:
         device_type = "Razer DeathAdder 2000\n";
         break;
@@ -416,6 +435,10 @@ static ssize_t razer_attr_read_device_type(struct device *dev, struct device_att
 
     case USB_DEVICE_ID_RAZER_BASILISK_X_HYPERSPEED:
         device_type = "Razer Basilisk X HyperSpeed\n";
+        break;
+
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
+        device_type = "Razer Naga Left-Handed Edition 2020\n";
         break;
 
     default:
@@ -445,8 +468,12 @@ static ssize_t razer_attr_read_get_firmware_version(struct device *dev, struct d
         return sprintf(buf, "v%d.%d\n", 0x01, 0x00);
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
     case USB_DEVICE_ID_RAZER_ATHERIS_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+    case USB_DEVICE_ID_RAZER_BASILISK_V2:
         report.transaction_id.id = 0x1f;
         break;
 
@@ -463,6 +490,7 @@ static ssize_t razer_attr_read_get_firmware_version(struct device *dev, struct d
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRED:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRELESS:
+    case USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI:
         report.transaction_id.id = 0x3f;
         break;
     }
@@ -547,6 +575,7 @@ static ssize_t razer_attr_write_mode_custom(struct device *dev, struct device_at
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRED:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRELESS:
+    case USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI:
     case USB_DEVICE_ID_RAZER_VIPER:
     case USB_DEVICE_ID_RAZER_VIPER_MINI:
     case USB_DEVICE_ID_RAZER_VIPER_ULTIMATE_WIRED:
@@ -554,7 +583,11 @@ static ssize_t razer_attr_write_mode_custom(struct device *dev, struct device_at
         report = razer_chroma_extended_matrix_effect_custom_frame();
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+    case USB_DEVICE_ID_RAZER_BASILISK_V2:
         report = razer_chroma_extended_matrix_effect_custom_frame();
         report.transaction_id.id = 0x1f;
         break;
@@ -592,6 +625,7 @@ static ssize_t razer_attr_write_mode_static(struct device *dev, struct device_at
             report.transaction_id.id = 0xff;
             break;
 
+        case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
         case USB_DEVICE_ID_RAZER_NAGA_TRINITY:
             // Some sort of mode switcher required after initialization and before color switching
             report = get_razer_report(0x0f, 0x02, 0x06);
@@ -782,10 +816,15 @@ static ssize_t razer_attr_read_get_serial(struct device *dev, struct device_attr
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRED:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRELESS:
+    case USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI:
         report.transaction_id.id = 0x3f;
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_ATHERIS_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+    case USB_DEVICE_ID_RAZER_BASILISK_V2:
         report.transaction_id.id = 0x1f;
         break;
     }
@@ -820,6 +859,8 @@ static ssize_t razer_attr_read_get_battery(struct device *dev, struct device_att
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRELESS:
         report.transaction_id.id = 0x3f;
         break;
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
     case USB_DEVICE_ID_RAZER_LANCEHEAD_WIRELESS_RECEIVER:
     case USB_DEVICE_ID_RAZER_LANCEHEAD_WIRELESS_WIRED:
     case USB_DEVICE_ID_RAZER_ATHERIS_RECEIVER:
@@ -862,6 +903,8 @@ static ssize_t razer_attr_read_is_charging(struct device *dev, struct device_att
         break;
     case USB_DEVICE_ID_RAZER_LANCEHEAD_WIRELESS_RECEIVER:
     case USB_DEVICE_ID_RAZER_LANCEHEAD_WIRELESS_WIRED:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
         report.transaction_id.id = 0x1f;
         break;
     }
@@ -957,10 +1000,13 @@ static ssize_t razer_attr_read_poll_rate(struct device *dev, struct device_attri
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRED:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRELESS:
+    case USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI:
         report.transaction_id.id = 0x3f;
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_ATHERIS_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_V2:
         report.transaction_id.id = 0x1f;
         break;
     }
@@ -1024,10 +1070,15 @@ static ssize_t razer_attr_write_poll_rate(struct device *dev, struct device_attr
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRED:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRELESS:
+    case USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI:
         report.transaction_id.id = 0x3f;
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_ATHERIS_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+    case USB_DEVICE_ID_RAZER_BASILISK_V2:
         report.transaction_id.id = 0x1f;
         break;
     }
@@ -1067,6 +1118,7 @@ static ssize_t razer_attr_write_matrix_brightness(struct device *dev, struct dev
         report.transaction_id.id = 0x3f;
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
         report = razer_chroma_extended_matrix_brightness(VARSTORE, 0x00, brightness);
         report.transaction_id.id = 0x1F;
@@ -1116,6 +1168,7 @@ static ssize_t razer_attr_read_matrix_brightness(struct device *dev, struct devi
         report.transaction_id.id = 0x3f;
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
         report = razer_chroma_extended_matrix_get_brightness(VARSTORE, 0x00);
         report.transaction_id.id = 0x1F;
@@ -1208,6 +1261,7 @@ static ssize_t razer_attr_write_mouse_dpi(struct device *dev, struct device_attr
         return count;
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_OROCHI_2013:
     case USB_DEVICE_ID_RAZER_IMPERATOR:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
@@ -1250,11 +1304,16 @@ static ssize_t razer_attr_write_mouse_dpi(struct device *dev, struct device_attr
         case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
         case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRED:
         case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRELESS:
+        case USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI:
             report.transaction_id.id = 0x3f;
             break;
 
+        case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
         case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
         case USB_DEVICE_ID_RAZER_ATHERIS_RECEIVER:
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+        case USB_DEVICE_ID_RAZER_BASILISK_V2:
             report.transaction_id.id = 0x1f;
             break;
         }
@@ -1312,8 +1371,12 @@ static ssize_t razer_attr_read_mouse_dpi(struct device *dev, struct device_attri
         report = razer_chroma_misc_get_dpi_xy_byte();
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
     case USB_DEVICE_ID_RAZER_ATHERIS_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+    case USB_DEVICE_ID_RAZER_BASILISK_V2:
         report = razer_chroma_misc_get_dpi_xy(NOSTORE);
         report.transaction_id.id = 0x1f;
         break;
@@ -1336,6 +1399,7 @@ static ssize_t razer_attr_read_mouse_dpi(struct device *dev, struct device_attri
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRED:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRELESS:
+    case USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI:
         report = razer_chroma_misc_get_dpi_xy(NOSTORE);
         report.transaction_id.id = 0x3f;
         break;
@@ -1361,6 +1425,54 @@ static ssize_t razer_attr_read_mouse_dpi(struct device *dev, struct device_attri
     }
 
     return sprintf(buf, "%u:%u\n", dpi_x, dpi_y);
+}
+
+static ssize_t razer_attr_write_tilt_hwheel(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+    struct razer_mouse_device *device = dev_get_drvdata(dev);
+    unsigned int tilt_hwheel;
+    if (kstrtouint(buf, 0, &tilt_hwheel) < 0)
+        return -EINVAL;
+    device->tilt_hwheel = !!tilt_hwheel;
+    return count;
+}
+
+static ssize_t razer_attr_read_tilt_hwheel(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    struct razer_mouse_device *device = dev_get_drvdata(dev);
+    return sprintf(buf, "%u\n", device->tilt_hwheel);
+}
+
+static ssize_t razer_attr_write_tilt_repeat(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+    struct razer_mouse_device *device = dev_get_drvdata(dev);
+    unsigned int tilt_repeat;
+    if (kstrtouint(buf, 0, &tilt_repeat) < 0)
+        return -EINVAL;
+    device->tilt_repeat = tilt_repeat;
+    return count;
+}
+
+static ssize_t razer_attr_read_tilt_repeat(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    struct razer_mouse_device *device = dev_get_drvdata(dev);
+    return sprintf(buf, "%u\n", device->tilt_repeat);
+}
+
+static ssize_t razer_attr_write_tilt_repeat_delay(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+    struct razer_mouse_device *device = dev_get_drvdata(dev);
+    unsigned int tilt_repeat_delay;
+    if (kstrtouint(buf, 0, &tilt_repeat_delay) < 0)
+        return -EINVAL;
+    device->tilt_repeat_delay = tilt_repeat_delay;
+    return count;
+}
+
+static ssize_t razer_attr_read_tilt_repeat_delay(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    struct razer_mouse_device *device = dev_get_drvdata(dev);
+    return sprintf(buf, "%u\n", device->tilt_repeat_delay);
 }
 
 /**
@@ -1639,11 +1751,23 @@ static ssize_t razer_attr_write_set_key_row(struct device *dev, struct device_at
         case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
         case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRED:
         case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRELESS:
+        case USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI:
         case USB_DEVICE_ID_RAZER_VIPER:
         case USB_DEVICE_ID_RAZER_VIPER_MINI:
         case USB_DEVICE_ID_RAZER_VIPER_ULTIMATE_WIRED:
         case USB_DEVICE_ID_RAZER_VIPER_ULTIMATE_WIRELESS:
             report = razer_chroma_extended_matrix_set_custom_frame(row_id, start_col, stop_col, (unsigned char*)&buf[offset]);
+            break;
+
+        case USB_DEVICE_ID_RAZER_BASILISK_V2:
+            report = razer_chroma_extended_matrix_set_custom_frame(row_id, start_col, stop_col, (unsigned char*)&buf[offset]);
+            report.transaction_id.id = 0x1f;
+            break;
+
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+            report = razer_chroma_extended_matrix_set_custom_frame(row_id, start_col, stop_col, (unsigned char*)&buf[offset]);
+            report.transaction_id.id = 0x1f;
             break;
 
         case USB_DEVICE_ID_RAZER_MAMBA_WIRED:
@@ -1657,6 +1781,7 @@ static ssize_t razer_attr_write_set_key_row(struct device *dev, struct device_at
             report = razer_chroma_misc_one_row_set_custom_frame(start_col, stop_col, (unsigned char*)&buf[offset]);
             break;
 
+        case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
         case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
             report = razer_chroma_extended_matrix_set_custom_frame2(row_id, start_col, stop_col, (unsigned char*)&buf[offset], 0);
             report.transaction_id.id = 0x1f;
@@ -1689,8 +1814,12 @@ static ssize_t razer_attr_write_device_mode(struct device *dev, struct device_at
             return count;
             break;
 
+        case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
         case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
         case USB_DEVICE_ID_RAZER_ATHERIS_RECEIVER:
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+        case USB_DEVICE_ID_RAZER_BASILISK_V2:
             report.transaction_id.id = 0x1f;
             break;
 
@@ -1707,6 +1836,7 @@ static ssize_t razer_attr_write_device_mode(struct device *dev, struct device_at
         case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
         case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRED:
         case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRELESS:
+        case USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI:
             report.transaction_id.id = 0x3f;
             break;
         }
@@ -1749,13 +1879,18 @@ static ssize_t razer_attr_read_device_mode(struct device *dev, struct device_att
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRED:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRELESS:
+    case USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI:
     case USB_DEVICE_ID_RAZER_MAMBA_WIRELESS_RECEIVER:
     case USB_DEVICE_ID_RAZER_MAMBA_WIRELESS_WIRED:
         report.transaction_id.id = 0x3f;
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
     case USB_DEVICE_ID_RAZER_ATHERIS_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+    case USB_DEVICE_ID_RAZER_BASILISK_V2:
         report.transaction_id.id = 0x1f;
         break;
     }
@@ -1783,7 +1918,11 @@ static ssize_t razer_attr_read_scroll_led_brightness(struct device *dev, struct 
         report.transaction_id.id = 0x3F;
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+    case USB_DEVICE_ID_RAZER_BASILISK_V2:
         report = razer_chroma_extended_matrix_get_brightness(VARSTORE, SCROLL_WHEEL_LED);
         report.transaction_id.id = 0x1f;
         break;
@@ -1829,7 +1968,11 @@ static ssize_t razer_attr_write_scroll_led_brightness(struct device *dev, struct
         report.transaction_id.id = 0x3F;
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+    case USB_DEVICE_ID_RAZER_BASILISK_V2:
         report = razer_chroma_extended_matrix_brightness(VARSTORE, SCROLL_WHEEL_LED, brightness);
         report.transaction_id.id = 0x1f;
         break;
@@ -1875,7 +2018,11 @@ static ssize_t razer_attr_read_logo_led_brightness(struct device *dev, struct de
         report.transaction_id.id = 0x3F;
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+    case USB_DEVICE_ID_RAZER_BASILISK_V2:
         report = razer_chroma_extended_matrix_get_brightness(VARSTORE, LOGO_LED);
         report.transaction_id.id = 0x1f;
         break;
@@ -1900,6 +2047,7 @@ static ssize_t razer_attr_read_logo_led_brightness(struct device *dev, struct de
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRED:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRELESS:
+    case USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI:
         report = razer_chroma_extended_matrix_get_brightness(VARSTORE, LOGO_LED);
         break;
 
@@ -1929,7 +2077,11 @@ static ssize_t razer_attr_write_logo_led_brightness(struct device *dev, struct d
         report.transaction_id.id = 0x3F;
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+    case USB_DEVICE_ID_RAZER_BASILISK_V2:
         report = razer_chroma_extended_matrix_brightness(VARSTORE, LOGO_LED, brightness);
         report.transaction_id.id = 0x1f;
         break;
@@ -1954,6 +2106,7 @@ static ssize_t razer_attr_write_logo_led_brightness(struct device *dev, struct d
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRED:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRELESS:
+    case USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI:
         report = razer_chroma_extended_matrix_brightness(VARSTORE, LOGO_LED, brightness);
         break;
 
@@ -1983,7 +2136,10 @@ static ssize_t razer_attr_read_side_led_brightness(struct device *dev, struct de
         report = razer_chroma_extended_matrix_get_brightness(VARSTORE, side);
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
         report = razer_chroma_extended_matrix_get_brightness(VARSTORE, side);
         report.transaction_id.id = 0x1f;
         break;
@@ -2014,7 +2170,10 @@ static ssize_t razer_attr_write_side_led_brightness(struct device *dev, struct d
         report = razer_chroma_extended_matrix_brightness(VARSTORE, side, brightness);
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
         report = razer_chroma_extended_matrix_brightness(VARSTORE, side, brightness);
         report.transaction_id.id = 0x1f;
         break;
@@ -2348,6 +2507,7 @@ static ssize_t razer_attr_write_scroll_mode_wave(struct device *dev, struct devi
         report = razer_chroma_extended_matrix_effect_wave(VARSTORE, SCROLL_WHEEL_LED, direction);
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
         report = razer_chroma_extended_matrix_effect_wave(VARSTORE, SCROLL_WHEEL_LED, direction);
         report.transaction_id.id = 0x1f;
@@ -2393,7 +2553,11 @@ static ssize_t razer_attr_write_scroll_mode_spectrum(struct device *dev, struct 
         report = razer_chroma_extended_matrix_effect_spectrum(VARSTORE, SCROLL_WHEEL_LED);
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+    case USB_DEVICE_ID_RAZER_BASILISK_V2:
         report = razer_chroma_extended_matrix_effect_spectrum(VARSTORE, SCROLL_WHEEL_LED);
         report.transaction_id.id = 0x1f;
         break;
@@ -2441,7 +2605,11 @@ static ssize_t razer_attr_write_scroll_mode_reactive(struct device *dev, struct 
             report = razer_chroma_extended_matrix_effect_reactive(VARSTORE, SCROLL_WHEEL_LED, speed, (struct razer_rgb*)&buf[1]);
             break;
 
+        case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
         case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+        case USB_DEVICE_ID_RAZER_BASILISK_V2:
             report = razer_chroma_extended_matrix_effect_reactive(VARSTORE, SCROLL_WHEEL_LED, speed, (struct razer_rgb*)&buf[1]);
             report.transaction_id.id = 0x1f;
             break;
@@ -2489,6 +2657,7 @@ static ssize_t razer_attr_write_scroll_mode_breath(struct device *dev, struct de
         }
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_DEATHADDER_ELITE:
     case USB_DEVICE_ID_RAZER_LANCEHEAD_WIRED:
     case USB_DEVICE_ID_RAZER_LANCEHEAD_WIRELESS:
@@ -2501,7 +2670,10 @@ static ssize_t razer_attr_write_scroll_mode_breath(struct device *dev, struct de
     case USB_DEVICE_ID_RAZER_MAMBA_WIRELESS_RECEIVER:
     case USB_DEVICE_ID_RAZER_MAMBA_WIRELESS_WIRED:
     case USB_DEVICE_ID_RAZER_BASILISK:
+    case USB_DEVICE_ID_RAZER_BASILISK_V2:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
         switch(count) {
         case 3: // Single colour mode
             report = razer_chroma_extended_matrix_effect_breathing_single(VARSTORE, SCROLL_WHEEL_LED, (struct razer_rgb*)&buf[0]);
@@ -2519,7 +2691,11 @@ static ssize_t razer_attr_write_scroll_mode_breath(struct device *dev, struct de
     }
 
     switch(usb_dev->descriptor.idProduct) {
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+    case USB_DEVICE_ID_RAZER_BASILISK_V2:
         report.transaction_id.id = 0x1f;
         break;
 
@@ -2566,7 +2742,11 @@ static ssize_t razer_attr_write_scroll_mode_static(struct device *dev, struct de
             report = razer_chroma_extended_matrix_effect_static(VARSTORE, SCROLL_WHEEL_LED, (struct razer_rgb*)&buf[0]);
             break;
 
+        case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
         case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+        case USB_DEVICE_ID_RAZER_BASILISK_V2:
             report = razer_chroma_extended_matrix_effect_static(VARSTORE, SCROLL_WHEEL_LED, (struct razer_rgb*)&buf[0]);
             report.transaction_id.id = 0x1f;
             break;
@@ -2618,7 +2798,11 @@ static ssize_t razer_attr_write_scroll_mode_none(struct device *dev, struct devi
         report = razer_chroma_extended_matrix_effect_none(VARSTORE, SCROLL_WHEEL_LED);
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+    case USB_DEVICE_ID_RAZER_BASILISK_V2:
         report = razer_chroma_extended_matrix_effect_none(VARSTORE, SCROLL_WHEEL_LED);
         report.transaction_id.id = 0x1f;
         break;
@@ -2653,6 +2837,7 @@ static ssize_t razer_attr_write_logo_mode_wave(struct device *dev, struct device
         report = razer_chroma_extended_matrix_effect_wave(VARSTORE, LOGO_LED, direction);
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
         report = razer_chroma_extended_matrix_effect_wave(VARSTORE, LOGO_LED, direction);
         report.transaction_id.id = 0x1f;
@@ -2702,10 +2887,15 @@ static ssize_t razer_attr_write_logo_mode_spectrum(struct device *dev, struct de
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRED:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRELESS:
+    case USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI:
         report = razer_chroma_extended_matrix_effect_spectrum(VARSTORE, LOGO_LED);
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+    case USB_DEVICE_ID_RAZER_BASILISK_V2:
         report = razer_chroma_extended_matrix_effect_spectrum(VARSTORE, LOGO_LED);
         report.transaction_id.id = 0x1f;
         break;
@@ -2757,10 +2947,15 @@ static ssize_t razer_attr_write_logo_mode_reactive(struct device *dev, struct de
         case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
         case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRED:
         case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRELESS:
+        case USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI:
             report = razer_chroma_extended_matrix_effect_reactive(VARSTORE, LOGO_LED, speed, (struct razer_rgb*)&buf[1]);
             break;
 
+        case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
         case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+        case USB_DEVICE_ID_RAZER_BASILISK_V2:
             report = razer_chroma_extended_matrix_effect_reactive(VARSTORE, LOGO_LED, speed, (struct razer_rgb*)&buf[1]);
             report.transaction_id.id = 0x1f;
             break;
@@ -2808,6 +3003,7 @@ static ssize_t razer_attr_write_logo_mode_breath(struct device *dev, struct devi
         }
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_DEATHADDER_ELITE:
     case USB_DEVICE_ID_RAZER_LANCEHEAD_WIRED:
     case USB_DEVICE_ID_RAZER_LANCEHEAD_WIRELESS:
@@ -2826,9 +3022,13 @@ static ssize_t razer_attr_write_logo_mode_breath(struct device *dev, struct devi
     case USB_DEVICE_ID_RAZER_VIPER_ULTIMATE_WIRED:
     case USB_DEVICE_ID_RAZER_VIPER_ULTIMATE_WIRELESS:
     case USB_DEVICE_ID_RAZER_BASILISK:
+    case USB_DEVICE_ID_RAZER_BASILISK_V2:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRED:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRELESS:
+    case USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI:
         switch(count) {
         case 3: // Single colour mode
             report = razer_chroma_extended_matrix_effect_breathing_single(VARSTORE, LOGO_LED, (struct razer_rgb*)&buf[0]);
@@ -2846,7 +3046,11 @@ static ssize_t razer_attr_write_logo_mode_breath(struct device *dev, struct devi
     }
 
     switch(usb_dev->descriptor.idProduct) {
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+    case USB_DEVICE_ID_RAZER_BASILISK_V2:
         report.transaction_id.id = 0x1f;
         break;
 
@@ -2897,10 +3101,15 @@ static ssize_t razer_attr_write_logo_mode_static(struct device *dev, struct devi
         case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
         case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRED:
         case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRELESS:
+        case USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI:
             report = razer_chroma_extended_matrix_effect_static(VARSTORE, LOGO_LED, (struct razer_rgb*)&buf[0]);
             break;
 
+        case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
         case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+        case USB_DEVICE_ID_RAZER_BASILISK_V2:
             report = razer_chroma_extended_matrix_effect_static(VARSTORE, LOGO_LED, (struct razer_rgb*)&buf[0]);
             report.transaction_id.id = 0x1f;
             break;
@@ -2955,10 +3164,15 @@ static ssize_t razer_attr_write_logo_mode_none(struct device *dev, struct device
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRED:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRELESS:
+    case USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI:
         report = razer_chroma_extended_matrix_effect_none(VARSTORE, LOGO_LED);
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+    case USB_DEVICE_ID_RAZER_BASILISK_V2:
         report = razer_chroma_extended_matrix_effect_none(VARSTORE, LOGO_LED);
         report.transaction_id.id = 0x1f;
         break;
@@ -2988,7 +3202,10 @@ static ssize_t razer_attr_write_side_mode_wave(struct device *dev, struct device
         report = razer_chroma_extended_matrix_effect_wave(VARSTORE, side, direction);
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
         report = razer_chroma_extended_matrix_effect_wave(VARSTORE, side, direction);
         report.transaction_id.id = 0x1f;
         break;
@@ -3038,7 +3255,10 @@ static ssize_t razer_attr_write_side_mode_spectrum(struct device *dev, struct de
         report = razer_chroma_extended_matrix_effect_spectrum(VARSTORE, side);
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
         report = razer_chroma_extended_matrix_effect_spectrum(VARSTORE, side);
         report.transaction_id.id = 0x1f;
         break;
@@ -3090,7 +3310,10 @@ static ssize_t razer_attr_write_side_mode_reactive(struct device *dev, struct de
             report = razer_chroma_extended_matrix_effect_reactive(VARSTORE, side, speed, (struct razer_rgb*)&buf[1]);
             break;
 
+        case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
         case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
             report = razer_chroma_extended_matrix_effect_reactive(VARSTORE, side, speed, (struct razer_rgb*)&buf[1]);
             report.transaction_id.id = 0x1f;
             break;
@@ -3135,12 +3358,15 @@ static ssize_t razer_attr_write_side_mode_breath(struct device *dev, struct devi
     struct razer_report report = {0};
 
     switch(usb_dev->descriptor.idProduct) {
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_LANCEHEAD_WIRED:
     case USB_DEVICE_ID_RAZER_LANCEHEAD_WIRELESS:
     case USB_DEVICE_ID_RAZER_LANCEHEAD_TE_WIRED:
     case USB_DEVICE_ID_RAZER_LANCEHEAD_WIRELESS_RECEIVER:
     case USB_DEVICE_ID_RAZER_LANCEHEAD_WIRELESS_WIRED:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
         switch(count) {
         case 3: // Single colour mode
             report = razer_chroma_extended_matrix_effect_breathing_single(VARSTORE, side, (struct razer_rgb*)&buf[0]);
@@ -3158,7 +3384,10 @@ static ssize_t razer_attr_write_side_mode_breath(struct device *dev, struct devi
     }
 
     switch(usb_dev->descriptor.idProduct) {
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
         report.transaction_id.id = 0x1f;
         break;
 
@@ -3206,7 +3435,11 @@ static ssize_t razer_attr_write_side_mode_static(struct device *dev, struct devi
         case USB_DEVICE_ID_RAZER_LANCEHEAD_WIRELESS_WIRED:
             report = razer_chroma_extended_matrix_effect_static(VARSTORE, side, (struct razer_rgb*)&buf[0]);
             break;
+
+        case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
         case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
             report = razer_chroma_extended_matrix_effect_static(VARSTORE, side, (struct razer_rgb*)&buf[0]);
             report.transaction_id.id = 0x1f;
             break;
@@ -3255,7 +3488,10 @@ static ssize_t razer_attr_write_side_mode_none(struct device *dev, struct device
         report = razer_chroma_extended_matrix_effect_none(VARSTORE, side);
         break;
 
+    case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
     case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
         report = razer_chroma_extended_matrix_effect_none(VARSTORE, side);
         report.transaction_id.id = 0x1f;
         break;
@@ -3344,6 +3580,10 @@ static DEVICE_ATTR(device_mode,               0660, razer_attr_read_device_mode,
 static DEVICE_ATTR(device_serial,             0440, razer_attr_read_get_serial,            NULL);
 static DEVICE_ATTR(device_idle_time,          0660, razer_attr_read_get_idle_time,         razer_attr_write_set_idle_time);
 
+static DEVICE_ATTR(tilt_hwheel,               0660, razer_attr_read_tilt_hwheel,           razer_attr_write_tilt_hwheel);
+static DEVICE_ATTR(tilt_repeat,               0660, razer_attr_read_tilt_repeat,           razer_attr_write_tilt_repeat);
+static DEVICE_ATTR(tilt_repeat_delay,         0660, razer_attr_read_tilt_repeat_delay,     razer_attr_write_tilt_repeat_delay);
+
 static DEVICE_ATTR(charge_level,              0440, razer_attr_read_get_battery,           NULL);
 static DEVICE_ATTR(charge_status,             0440, razer_attr_read_is_charging,           NULL);
 static DEVICE_ATTR(charge_effect,             0220, NULL,                                  razer_attr_write_set_charging_effect);
@@ -3409,6 +3649,200 @@ static DEVICE_ATTR(right_matrix_effect_none,        0220, NULL,                 
 static DEVICE_ATTR(backlight_led_state,            0660, razer_attr_read_backlight_led_state, razer_attr_write_backlight_led_state);
 
 
+#define REP4_DPI_UP  0x20
+#define REP4_DPI_DN  0x21
+#define REP4_TILT_L  0x22
+#define REP4_TILT_R  0x23
+#define REP4_PROFILE 0x50
+#define REP4_SNIPER  0x51
+
+#define BIT_TILT_L 5
+#define BIT_TILT_R 6
+
+/**
+ * Map "Report 4" codes to evdev key codes
+ */
+static const __u16 rep4_key_codes[] = {
+    [REP4_TILT_L]  = BTN_BACK,          /* BTN_MOUSE + 6 */
+    [REP4_TILT_R]  = BTN_FORWARD,       /* BTN_MOUSE + 5 */
+    [REP4_SNIPER]  = BTN_TASK,          /* BTN_MOUSE + 7 */
+    [REP4_DPI_UP]  = BTN_MOUSE + 8,
+    [REP4_DPI_DN]  = BTN_MOUSE + 9,
+    [REP4_PROFILE] = BTN_MOUSE + 10,
+    /* NOTE: Highest legal mouse button is BTN_MOUSE + 15 */
+};
+
+struct button_mapping {
+    u8 bit;
+    __u16 code;          /* when tilt_hwheel == 0 */
+    __s32 hwheel_value;         /* when tilt_hwheel == 1 */
+};
+
+/**
+ * Map bits in the first byte of the mouse report to evdev keycodes
+ * and REL_HWHEEL values
+ */
+static const struct button_mapping button_mappings[] = {
+    {BIT_TILT_L, BTN_BACK, -1},
+    {BIT_TILT_R, BTN_FORWARD, 1},
+};
+
+/**
+ * Convert an evdev mouse button code to the corresponding HID usage
+ */
+u32 mouse_button_to_usage(__u16 code)
+{
+    return HID_UP_BUTTON + (code - BTN_MOUSE) + 1;
+}
+
+/**
+ * Send the MSC_SCAN event for the usage code associated with an evdev
+ * mouse button code
+ */
+void input_button_msc_scan(struct input_dev *input, __u16 button)
+{
+    input_event(input, EV_MSC, MSC_SCAN, mouse_button_to_usage(button));
+}
+
+/**
+ * Look up and send the evdev key associated with the Razer "report 4"
+ * code
+ */
+void input_rep4_code(struct input_dev *input, u8 code, __s32 value)
+{
+    if (code < ARRAY_SIZE(rep4_key_codes) && rep4_key_codes[code]) {
+        unsigned int button = rep4_key_codes[code];
+        input_button_msc_scan(input, button);
+        input_report_key(input, button, value);
+        input_sync(input);
+    }
+}
+
+/**
+ * Timer callback for wheel tilt repeating
+ */
+static enum hrtimer_restart wheel_tilt_repeat(struct hrtimer *timer)
+{
+    struct razer_mouse_device *dev =
+        container_of(timer, struct razer_mouse_device, repeat_timer);
+    input_report_rel(dev->input, REL_HWHEEL, dev->hwheel_value);
+    input_sync(dev->input);
+    if (dev->tilt_repeat)
+        hrtimer_forward_now(timer, ms_to_ktime(dev->tilt_repeat));
+    return HRTIMER_RESTART;
+}
+
+/**
+ * Send a tilt-wheel event and, if configured, start the key-repeat timer
+ */
+static void tilt_hwheel_start(struct razer_mouse_device *rdev,
+                              __s32 rel_value)
+{
+    input_report_rel(rdev->input, REL_HWHEEL, rel_value);
+    input_sync(rdev->input);
+
+    if (rdev->tilt_repeat && rdev->tilt_repeat_delay) {
+        rdev->hwheel_value = rel_value;
+        hrtimer_start_range_ns(
+            &rdev->repeat_timer, ms_to_ktime(rdev->tilt_repeat_delay),
+            1000, HRTIMER_MODE_REL);
+    }
+}
+
+/**
+ * Stop the tilt wheel key-repeat timer
+ */
+static void tilt_hwheel_stop(struct razer_mouse_device *rdev)
+{
+    hrtimer_cancel(&rdev->repeat_timer);
+}
+
+/**
+ * Test if a device is a HID device
+ */
+static int dev_is_on_bus(struct device *dev, void *data)
+{
+    return (dev->bus == data);
+}
+
+/**
+ * Find an interface on a usb_device with the specified protocol
+ */
+struct usb_interface *find_intf_with_proto(struct usb_device *usbdev, u8 proto)
+{
+    struct usb_interface *intf;
+    int i;
+
+    for (i = 0; i < usbdev->actconfig->desc.bNumInterfaces; i++) {
+        intf = usb_ifnum_to_if(usbdev, i);
+        if (intf && intf->cur_altsetting->desc.bInterfaceProtocol == proto)
+            return intf;
+    }
+
+    return NULL;
+}
+
+/**
+ * Walk up the device tree from an interface to the device it is a
+ * part of, then back down through the interface with protocol == MOUSE
+ * to the razer_mouse_device associated with it
+ */
+static struct razer_mouse_device *find_mouse(struct hid_device *hdev)
+{
+    struct bus_type *hid_bus_type = hdev->dev.bus;
+    struct usb_interface *intf = to_usb_interface(hdev->dev.parent);
+    struct usb_device *usbdev = interface_to_usbdev(intf);
+    struct usb_interface *m_intf = find_intf_with_proto(usbdev, USB_INTERFACE_PROTOCOL_MOUSE);
+    struct device *dev;
+    struct razer_mouse_device *rdev;
+
+    if (!m_intf)
+        return NULL;
+
+    dev = device_find_child(&m_intf->dev, hid_bus_type, dev_is_on_bus);
+    if (!dev)
+        return NULL;
+
+    rdev = dev_get_drvdata(dev);
+    put_device(dev);
+    return rdev;
+}
+
+/**
+ * Test if a bit is cleared in 'prev' and set in 'cur'
+ */
+static int rising_bit(u8 prev, u8 cur, u8 mask)
+{
+    return !(prev & mask) && cur & mask;
+}
+
+/**
+ * Test if a bit is set in 'prev' and cleared in 'cur'
+ */
+static int falling_bit(u8 prev, u8 cur, u8 mask)
+{
+    return prev & mask && !(cur & mask);
+}
+
+/**
+ * Test if a bit is different between 'prev' and 'cur'
+ */
+static int edge_bit(u8 prev, u8 cur, u8 mask)
+{
+    return (prev & mask) != (cur & mask);
+}
+
+/**
+ * Search a byte array for a value
+ */
+static int search(u8 *array, u8 value, unsigned n)
+{
+    while (n--) {
+        if (*array++ == value)
+            return 1;
+    }
+    return 0;
+}
 
 /**
  * Raw event function
@@ -3416,41 +3850,142 @@ static DEVICE_ATTR(backlight_led_state,            0660, razer_attr_read_backlig
 static int razer_raw_event(struct hid_device *hdev, struct hid_report *report, u8 *data, int size)
 {
     struct usb_interface *intf = to_usb_interface(hdev->dev.parent);
+    struct razer_mouse_device *rdev = hid_get_drvdata(hdev);
 
-    // The event were looking for is 16 bytes long and starts with 0x04
-    if(intf->cur_altsetting->desc.bInterfaceProtocol == USB_INTERFACE_PROTOCOL_KEYBOARD && size == 16 && data[0] == 0x04) {
-        // Convert 04... to 0100...
-        int index = size-1; // This way we start at 2nd last value, does subtract 1 from the 15key rollover though (not an issue cmon)
-        u8 cur_value = 0x00;
-
-        while(--index > 0) {
-            cur_value = data[index];
-            if(cur_value == 0x00) { // Skip 0x00
-                continue;
+    switch (hdev->product) {
+    case USB_DEVICE_ID_RAZER_BASILISK_V2:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+    case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+        /* Detect wheel tilt edges */
+        if(intf->cur_altsetting->desc.bInterfaceProtocol == USB_INTERFACE_PROTOCOL_MOUSE) {
+            int i;
+            for (i = 0; i < ARRAY_SIZE(button_mappings); i++) {
+                const struct button_mapping *mapping = &button_mappings[i];
+                u8 mask = 1 << mapping->bit;
+                if (mapping->hwheel_value && rdev->tilt_hwheel) {
+                    __s32 rel_value = mapping->hwheel_value;
+                    if (rising_bit(rdev->button_byte, data[0], mask))
+                        tilt_hwheel_start(rdev, rel_value);
+                    if (falling_bit(rdev->button_byte, data[0], mask))
+                        tilt_hwheel_stop(rdev);
+                } else if (edge_bit(rdev->button_byte, data[0], mask)) {
+                    unsigned int code = mapping->code;
+                    input_button_msc_scan(rdev->input, code);
+                    input_report_key(rdev->input, code, !!(data[0] & mask));
+                    input_sync(rdev->input);
+                }
             }
-
-            switch(cur_value) {
-            case 0x20: // DPI Up
-                cur_value = 0x68; // F13
-                break;
-            case 0x21: // DPI Down
-                cur_value = 0x69; // F14
-                break;
-            case 0x22: // Wheel Left
-                cur_value = 0x6A; // F15
-                break;
-            case 0x23: // Wheel Right
-                cur_value = 0x6B; // F16
-                break;
-            }
-
-            data[index+1] = cur_value;
+            rdev->button_byte = data[0];
         }
 
+        /* Detect buttons reported on the keyboard interface */
+        if(intf->cur_altsetting->desc.bInterfaceProtocol == USB_INTERFACE_PROTOCOL_KEYBOARD && size == 16 && data[0] == 0x04) {
+            struct razer_mouse_device *m_rdev = find_mouse(hdev);
+            int i;
 
-        data[0] = 0x01;
-        data[1] = 0x00;
-        return 1;
+            if (!m_rdev) {
+                printk(KERN_WARNING "razermouse: Couldn't find mouse intf from kbd intf");
+                return 1;
+            }
+
+            for (i = 1; i < size; i++) {
+                if (!search(rdev->rep4 + 1, data[i], size - 1))
+                    input_rep4_code(m_rdev->input, data[i], 1);
+                if (!search(data + 1, rdev->rep4[i], size - 1))
+                    input_rep4_code(m_rdev->input, rdev->rep4[i], 0);
+            }
+            memcpy(rdev->rep4, data, 16);
+            return 1;
+        }
+        break;
+    default:
+        // The event were looking for is 16 bytes long and starts with 0x04
+        if(intf->cur_altsetting->desc.bInterfaceProtocol == USB_INTERFACE_PROTOCOL_KEYBOARD && size == 16 && data[0] == 0x04) {
+            // Convert 04... to 0100...
+            int index = size-1; // This way we start at 2nd last value, does subtract 1 from the 15key rollover though (not an issue cmon)
+            u8 cur_value = 0x00;
+
+            while(--index > 0) {
+                cur_value = data[index];
+                if(cur_value == 0x00) { // Skip 0x00
+                    continue;
+                }
+
+                switch(cur_value) {
+                case 0x20: // DPI Up
+                    cur_value = 0x68; // F13
+                    break;
+                case 0x21: // DPI Down
+                    cur_value = 0x69; // F14
+                    break;
+                case 0x22: // Wheel Left
+                    cur_value = 0x6A; // F15
+                    break;
+                case 0x23: // Wheel Right
+                    cur_value = 0x6B; // F16
+                    break;
+                }
+
+                data[index+1] = cur_value;
+            }
+
+
+            data[0] = 0x01;
+            data[1] = 0x00;
+            return 1;
+        }
+        break;
+    }
+
+    return 0;
+}
+
+/**
+ * Input mapping function
+ */
+static int
+razer_input_mapping(struct hid_device *hdev, struct hid_input *hidinput,
+                    struct hid_field *field, struct hid_usage *usage,
+                    unsigned long **bit, int *max)
+{
+    /* Some higher nonstandard mouse buttons are reported in
+     * 15-element arrays on reports 4 and 5 with usage 0x10003. If
+     * hid-core tries to interpret this misshapen descriptor it will
+     * botch it and add spurious event codes to input->evkey. */
+    if (field->application == HID_UP_GENDESK
+        && usage->hid == (HID_UP_GENDESK | 0x0003)) {
+        return -1;
+    }
+    return 0;
+}
+
+/**
+ * Input configured function
+ */
+static int razer_input_configured(struct hid_device *hdev,
+                                  struct hid_input *hidinput)
+{
+    struct usb_interface *intf = to_usb_interface(hdev->dev.parent);
+    struct razer_mouse_device *dev = hid_get_drvdata(hdev);
+
+    dev->input = hidinput->input;
+
+    if (intf->cur_altsetting->desc.bInterfaceProtocol == USB_INTERFACE_PROTOCOL_MOUSE) {
+        switch (hdev->product) {
+        case USB_DEVICE_ID_RAZER_BASILISK_V2:
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+            /* Linux HID doesn't detect the Basilisk V2's tilt wheel
+             * or buttons beyond the first 5 */
+            input_set_capability(hidinput->input, EV_REL, REL_HWHEEL);
+            input_set_capability(hidinput->input, EV_KEY, BTN_FORWARD);
+            input_set_capability(hidinput->input, EV_KEY, BTN_BACK);
+            input_set_capability(hidinput->input, EV_KEY, BTN_TASK);
+            input_set_capability(hidinput->input, EV_KEY, BTN_MOUSE + 8);
+            input_set_capability(hidinput->input, EV_KEY, BTN_MOUSE + 9);
+            input_set_capability(hidinput->input, EV_KEY, BTN_MOUSE + 10);
+            break;
+        }
     }
 
     return 0;
@@ -3486,6 +4021,13 @@ static void razer_mouse_init(struct razer_mouse_device *dev, struct usb_interfac
     dev->da3_5g.dpi = 1; // 3500 DPI
     dev->da3_5g.profile = 1; // Profile 1
     dev->da3_5g.poll = 1; // Poll rate 1000
+
+    // Setup tilt wheel HWHEEL emulation
+    hrtimer_init(&dev->repeat_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+    dev->repeat_timer.function = wheel_tilt_repeat;
+    dev->tilt_hwheel = 1;
+    dev->tilt_repeat_delay = 250;
+    dev->tilt_repeat = 33;
 }
 
 /**
@@ -3513,6 +4055,7 @@ static int razer_mouse_probe(struct hid_device *hdev, const struct hid_device_id
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRED:
     case USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRELESS:
+    case USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI:
         expected_subclass = 0x01;
         break;
     }
@@ -3586,6 +4129,55 @@ static int razer_mouse_probe(struct hid_device *hdev, const struct hid_device_id
             CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_matrix_custom_frame);
             break;
 
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_charge_effect);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_charge_colour);
+        /* fall through */
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_poll_rate);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_dpi);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_charge_level);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_charge_status);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_charge_low_threshold);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_device_idle_time);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_tilt_hwheel);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_tilt_repeat_delay);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_tilt_repeat);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_left_led_brightness);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_left_matrix_effect_wave);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_left_matrix_effect_spectrum);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_left_matrix_effect_reactive);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_left_matrix_effect_breath);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_left_matrix_effect_static);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_left_matrix_effect_none);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_right_led_brightness);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_right_matrix_effect_wave);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_right_matrix_effect_spectrum);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_right_matrix_effect_reactive);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_right_matrix_effect_breath);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_right_matrix_effect_static);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_right_matrix_effect_none);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_led_brightness);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_matrix_effect_spectrum);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_matrix_effect_reactive);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_matrix_effect_breath);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_matrix_effect_static);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_matrix_effect_none);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_scroll_led_brightness);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_scroll_matrix_effect_spectrum);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_scroll_matrix_effect_reactive);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_scroll_matrix_effect_breath);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_scroll_matrix_effect_static);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_scroll_matrix_effect_none);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_matrix_effect_custom);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_matrix_custom_frame);
+            break;
+
+        case USB_DEVICE_ID_RAZER_BASILISK_V2:
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_tilt_hwheel);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_tilt_repeat_delay);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_tilt_repeat);
+        /* Fall through */
         case USB_DEVICE_ID_RAZER_DEATHADDER_ELITE:
         case USB_DEVICE_ID_RAZER_BASILISK:
         case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
@@ -3603,6 +4195,20 @@ static int razer_mouse_probe(struct hid_device *hdev, const struct hid_device_id
             CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_scroll_matrix_effect_breath);
             CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_scroll_matrix_effect_static);
             CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_scroll_matrix_effect_none);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_matrix_effect_custom);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_matrix_custom_frame);
+            break;
+
+        case USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI:
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_poll_rate);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_dpi);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_dpi_stages);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_led_brightness);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_matrix_effect_spectrum);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_matrix_effect_reactive);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_matrix_effect_breath);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_matrix_effect_static);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_matrix_effect_none);
             CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_matrix_effect_custom);
             CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_matrix_custom_frame);
             break;
@@ -3820,6 +4426,38 @@ static int razer_mouse_probe(struct hid_device *hdev, const struct hid_device_id
             CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_led_state);
             CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_poll_rate);
             CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_dpi);
+            break;
+
+        case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_dpi);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_poll_rate);
+
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_led_brightness);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_matrix_effect_wave);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_matrix_effect_spectrum);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_matrix_effect_reactive);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_matrix_effect_breath);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_matrix_effect_static);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_matrix_effect_none);
+
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_scroll_led_brightness);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_scroll_matrix_effect_wave);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_scroll_matrix_effect_spectrum);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_scroll_matrix_effect_reactive);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_scroll_matrix_effect_breath);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_scroll_matrix_effect_static);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_scroll_matrix_effect_none);
+
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_right_led_brightness);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_right_matrix_effect_wave);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_right_matrix_effect_spectrum);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_right_matrix_effect_reactive);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_right_matrix_effect_breath);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_right_matrix_effect_static);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_right_matrix_effect_none);
+
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_matrix_effect_custom);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_matrix_custom_frame);
             break;
 
         case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
@@ -4055,6 +4693,55 @@ static void razer_mouse_disconnect(struct hid_device *hdev)
             device_remove_file(&hdev->dev, &dev_attr_matrix_custom_frame);
             break;
 
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER:
+            device_remove_file(&hdev->dev, &dev_attr_charge_effect);
+            device_remove_file(&hdev->dev, &dev_attr_charge_colour);
+        /* fall through */
+        case USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED:
+            device_remove_file(&hdev->dev, &dev_attr_poll_rate);
+            device_remove_file(&hdev->dev, &dev_attr_dpi);
+            device_remove_file(&hdev->dev, &dev_attr_charge_level);
+            device_remove_file(&hdev->dev, &dev_attr_charge_status);
+            device_remove_file(&hdev->dev, &dev_attr_charge_low_threshold);
+            device_remove_file(&hdev->dev, &dev_attr_device_idle_time);
+            device_remove_file(&hdev->dev, &dev_attr_tilt_hwheel);
+            device_remove_file(&hdev->dev, &dev_attr_tilt_repeat_delay);
+            device_remove_file(&hdev->dev, &dev_attr_tilt_repeat);
+            device_remove_file(&hdev->dev, &dev_attr_left_led_brightness);
+            device_remove_file(&hdev->dev, &dev_attr_left_matrix_effect_wave);
+            device_remove_file(&hdev->dev, &dev_attr_left_matrix_effect_spectrum);
+            device_remove_file(&hdev->dev, &dev_attr_left_matrix_effect_reactive);
+            device_remove_file(&hdev->dev, &dev_attr_left_matrix_effect_breath);
+            device_remove_file(&hdev->dev, &dev_attr_left_matrix_effect_static);
+            device_remove_file(&hdev->dev, &dev_attr_left_matrix_effect_none);
+            device_remove_file(&hdev->dev, &dev_attr_right_led_brightness);
+            device_remove_file(&hdev->dev, &dev_attr_right_matrix_effect_wave);
+            device_remove_file(&hdev->dev, &dev_attr_right_matrix_effect_spectrum);
+            device_remove_file(&hdev->dev, &dev_attr_right_matrix_effect_reactive);
+            device_remove_file(&hdev->dev, &dev_attr_right_matrix_effect_breath);
+            device_remove_file(&hdev->dev, &dev_attr_right_matrix_effect_static);
+            device_remove_file(&hdev->dev, &dev_attr_right_matrix_effect_none);
+            device_remove_file(&hdev->dev, &dev_attr_logo_led_brightness);
+            device_remove_file(&hdev->dev, &dev_attr_logo_matrix_effect_spectrum);
+            device_remove_file(&hdev->dev, &dev_attr_logo_matrix_effect_reactive);
+            device_remove_file(&hdev->dev, &dev_attr_logo_matrix_effect_breath);
+            device_remove_file(&hdev->dev, &dev_attr_logo_matrix_effect_static);
+            device_remove_file(&hdev->dev, &dev_attr_logo_matrix_effect_none);
+            device_remove_file(&hdev->dev, &dev_attr_scroll_led_brightness);
+            device_remove_file(&hdev->dev, &dev_attr_scroll_matrix_effect_spectrum);
+            device_remove_file(&hdev->dev, &dev_attr_scroll_matrix_effect_reactive);
+            device_remove_file(&hdev->dev, &dev_attr_scroll_matrix_effect_breath);
+            device_remove_file(&hdev->dev, &dev_attr_scroll_matrix_effect_static);
+            device_remove_file(&hdev->dev, &dev_attr_scroll_matrix_effect_none);
+            device_remove_file(&hdev->dev, &dev_attr_matrix_effect_custom);
+            device_remove_file(&hdev->dev, &dev_attr_matrix_custom_frame);
+            break;
+
+        case USB_DEVICE_ID_RAZER_BASILISK_V2:
+            device_remove_file(&hdev->dev, &dev_attr_tilt_hwheel);
+            device_remove_file(&hdev->dev, &dev_attr_tilt_repeat_delay);
+            device_remove_file(&hdev->dev, &dev_attr_tilt_repeat);
+        /* Fall through */
         case USB_DEVICE_ID_RAZER_DEATHADDER_ELITE:
         case USB_DEVICE_ID_RAZER_BASILISK:
         case USB_DEVICE_ID_RAZER_DEATHADDER_V2:
@@ -4072,6 +4759,20 @@ static void razer_mouse_disconnect(struct hid_device *hdev)
             device_remove_file(&hdev->dev, &dev_attr_scroll_matrix_effect_breath);
             device_remove_file(&hdev->dev, &dev_attr_scroll_matrix_effect_static);
             device_remove_file(&hdev->dev, &dev_attr_scroll_matrix_effect_none);
+            device_remove_file(&hdev->dev, &dev_attr_matrix_effect_custom);
+            device_remove_file(&hdev->dev, &dev_attr_matrix_custom_frame);
+            break;
+
+        case USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI:
+            device_remove_file(&hdev->dev, &dev_attr_poll_rate);
+            device_remove_file(&hdev->dev, &dev_attr_dpi);
+            device_remove_file(&hdev->dev, &dev_attr_dpi_stages);
+            device_remove_file(&hdev->dev, &dev_attr_logo_led_brightness);
+            device_remove_file(&hdev->dev, &dev_attr_logo_matrix_effect_spectrum);
+            device_remove_file(&hdev->dev, &dev_attr_logo_matrix_effect_reactive);
+            device_remove_file(&hdev->dev, &dev_attr_logo_matrix_effect_breath);
+            device_remove_file(&hdev->dev, &dev_attr_logo_matrix_effect_static);
+            device_remove_file(&hdev->dev, &dev_attr_logo_matrix_effect_none);
             device_remove_file(&hdev->dev, &dev_attr_matrix_effect_custom);
             device_remove_file(&hdev->dev, &dev_attr_matrix_custom_frame);
             break;
@@ -4269,6 +4970,38 @@ static void razer_mouse_disconnect(struct hid_device *hdev)
             device_remove_file(&hdev->dev, &dev_attr_dpi);
             break;
 
+        case USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020:
+            device_remove_file(&hdev->dev, &dev_attr_dpi);
+            device_remove_file(&hdev->dev, &dev_attr_poll_rate);
+
+            device_remove_file(&hdev->dev, &dev_attr_logo_led_brightness);
+            device_remove_file(&hdev->dev, &dev_attr_logo_matrix_effect_wave);
+            device_remove_file(&hdev->dev, &dev_attr_logo_matrix_effect_spectrum);
+            device_remove_file(&hdev->dev, &dev_attr_logo_matrix_effect_reactive);
+            device_remove_file(&hdev->dev, &dev_attr_logo_matrix_effect_breath);
+            device_remove_file(&hdev->dev, &dev_attr_logo_matrix_effect_static);
+            device_remove_file(&hdev->dev, &dev_attr_logo_matrix_effect_none);
+
+            device_remove_file(&hdev->dev, &dev_attr_scroll_led_brightness);
+            device_remove_file(&hdev->dev, &dev_attr_scroll_matrix_effect_wave);
+            device_remove_file(&hdev->dev, &dev_attr_scroll_matrix_effect_spectrum);
+            device_remove_file(&hdev->dev, &dev_attr_scroll_matrix_effect_reactive);
+            device_remove_file(&hdev->dev, &dev_attr_scroll_matrix_effect_breath);
+            device_remove_file(&hdev->dev, &dev_attr_scroll_matrix_effect_static);
+            device_remove_file(&hdev->dev, &dev_attr_scroll_matrix_effect_none);
+
+            device_remove_file(&hdev->dev, &dev_attr_right_led_brightness);
+            device_remove_file(&hdev->dev, &dev_attr_right_matrix_effect_wave);
+            device_remove_file(&hdev->dev, &dev_attr_right_matrix_effect_spectrum);
+            device_remove_file(&hdev->dev, &dev_attr_right_matrix_effect_reactive);
+            device_remove_file(&hdev->dev, &dev_attr_right_matrix_effect_breath);
+            device_remove_file(&hdev->dev, &dev_attr_right_matrix_effect_static);
+            device_remove_file(&hdev->dev, &dev_attr_right_matrix_effect_none);
+
+            device_remove_file(&hdev->dev, &dev_attr_matrix_effect_custom);
+            device_remove_file(&hdev->dev, &dev_attr_matrix_custom_frame);
+            break;
+
         case USB_DEVICE_ID_RAZER_MAMBA_ELITE:
             device_remove_file(&hdev->dev, &dev_attr_dpi);
             device_remove_file(&hdev->dev, &dev_attr_poll_rate);
@@ -4399,6 +5132,8 @@ static void razer_mouse_disconnect(struct hid_device *hdev)
 
 
     hid_hw_stop(hdev);
+    hrtimer_cancel(&dev->repeat_timer);
+
     kfree(dev);
     dev_info(&intf->dev, "Razer Device disconnected\n");
 }
@@ -4454,12 +5189,17 @@ static const struct hid_device_id razer_devices[] = {
     { HID_USB_DEVICE(USB_VENDOR_ID_RAZER,USB_DEVICE_ID_RAZER_VIPER_ULTIMATE_WIRED) },
     { HID_USB_DEVICE(USB_VENDOR_ID_RAZER,USB_DEVICE_ID_RAZER_VIPER_ULTIMATE_WIRELESS) },
     { HID_USB_DEVICE(USB_VENDOR_ID_RAZER,USB_DEVICE_ID_RAZER_BASILISK) },
+    { HID_USB_DEVICE(USB_VENDOR_ID_RAZER,USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_RECEIVER) },
+    { HID_USB_DEVICE(USB_VENDOR_ID_RAZER,USB_DEVICE_ID_RAZER_BASILISK_ULTIMATE_WIRED) },
+    { HID_USB_DEVICE(USB_VENDOR_ID_RAZER,USB_DEVICE_ID_RAZER_BASILISK_V2) },
     { HID_USB_DEVICE(USB_VENDOR_ID_RAZER,USB_DEVICE_ID_RAZER_DEATHADDER_V2) },
     { HID_USB_DEVICE(USB_VENDOR_ID_RAZER,USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRED) },
     { HID_USB_DEVICE(USB_VENDOR_ID_RAZER,USB_DEVICE_ID_RAZER_DEATHADDER_V2_PRO_WIRELESS) },
+    { HID_USB_DEVICE(USB_VENDOR_ID_RAZER,USB_DEVICE_ID_RAZER_DEATHADDER_V2_MINI) },
     { HID_USB_DEVICE(USB_VENDOR_ID_RAZER,USB_DEVICE_ID_RAZER_DEATHADDER_2000) },
     { HID_USB_DEVICE(USB_VENDOR_ID_RAZER,USB_DEVICE_ID_RAZER_ATHERIS_RECEIVER) },
     { HID_USB_DEVICE(USB_VENDOR_ID_RAZER,USB_DEVICE_ID_RAZER_BASILISK_X_HYPERSPEED) },
+    { HID_USB_DEVICE(USB_VENDOR_ID_RAZER,USB_DEVICE_ID_RAZER_NAGA_LEFT_HANDED_2020) },
     { 0 }
 };
 
@@ -4476,6 +5216,8 @@ static struct hid_driver razer_mouse_driver = {
     .remove    = razer_mouse_disconnect,
 
     .raw_event = razer_raw_event,
+    .input_mapping = razer_input_mapping,
+    .input_configured = razer_input_configured,
 };
 
 module_hid_driver(razer_mouse_driver);
