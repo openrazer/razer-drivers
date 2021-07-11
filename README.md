@@ -137,6 +137,7 @@ The devices below are fully feature supported by OpenRazer, which means all avai
 | Razer Viper Mini                              |  1532:008A  |
 | Razer DeathAdder V2 Mini                      |  1532:008C  |
 | Razer Naga Left-Handed Edition                |  1532:008D  |
+| Razer Orochi V2                               |  1532:0094  |
 
 ### Mousemats
 | Device                                        | USB VID:PID |
